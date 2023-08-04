@@ -65,17 +65,16 @@ class DShowCaptureReader(VideoReader):
         info = self.device.get_info()
         self.name = info[capture]['name']
         if info[capture]['type'] == "Blackmagic":
-            self.name = "Blackmagic: " + self.name
+            self.name = f"Blackmagic: {self.name}"
             if dcap is None or dcap < 0:
                 dcap = 0
         ret = False
         if dcap is None:
             ret = self.device.capture_device(capture, self.width, self.height, self.fps)
+        elif dcap < 0:
+            ret = self.device.capture_device_default(capture)
         else:
-            if dcap < 0:
-                ret = self.device.capture_device_default(capture)
-            else:
-                ret = self.device.capture_device_by_dcap(capture, dcap, self.width, self.height, self.fps)
+            ret = self.device.capture_device_by_dcap(capture, dcap, self.width, self.height, self.fps)
         if not ret:
             raise Exception("Failed to start capture.")
         self.width = self.device.width
@@ -94,10 +93,7 @@ class DShowCaptureReader(VideoReader):
         except:
             gc.collect()
             img = self.device.get_frame(self.timeout)
-        if img is None:
-            return False, None
-        else:
-            return True, img
+        return (False, None) if img is None else (True, img)
     def close(self):
         self.device.destroy_capture()
 
@@ -156,7 +152,7 @@ def try_int(s):
 def test_reader(reader):
     got_any = 0
     try:
-        for i in range(30):
+        for _ in range(30):
             if not reader.is_ready():
                 time.sleep(0.02)
             ret, frame = reader.read()
@@ -229,13 +225,16 @@ class InputReader():
                     if good:
                         return
                     # Try with OpenCV
-                    print(f"Escapi failed. Falling back to OpenCV. If this fails, please change your camera settings.", file=sys.stderr)
+                    print(
+                        "Escapi failed. Falling back to OpenCV. If this fails, please change your camera settings.",
+                        file=sys.stderr,
+                    )
                     self.reader = OpenCVReader(int(capture), width, height, fps)
                     self.name = self.reader.name
                 else:
                     self.reader = OpenCVReader(int(capture), width, height, fps)
         except Exception as e:
-            print("Error: " + str(e))
+            print(f"Error: {str(e)}")
 
         if self.reader is None or not self.reader.is_open():
             print("There was no valid input.")

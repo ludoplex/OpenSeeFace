@@ -56,27 +56,26 @@ def median(lst,ordered=False):
 class remedian:
 
   # Initialization
-  def __init__(i,inits=[], k=64, # after some experimentation, 64 works ok
-               about = None):
-    i.all,i.k = [],k
-    i.more,i._median=None,None
-    [i + x for x in inits]
+  def __init__(self, inits=[], k=64, about = None):
+    self.all, self.k = [],k
+    self.more, self._median = None,None
+    [self + x for x in inits]
 
   # When full, push the median of current values to next list, then reset.
-  def __add__(i,x):
-    i._median = None
-    i.all.append(x)
-    if len(i.all) == i.k:
-      i.more = i.more or remedian(k=i.k)
-      i.more + i._medianPrim(i.all)
-      i.all = []  # reset
+  def __add__(self, x):
+    self._median = None
+    self.all.append(x)
+    if len(self.all) == self.k:
+      self.more = self.more or remedian(k=self.k)
+      self.more + self._medianPrim(self.all)
+      self.all = []
 
   #  If there is a next list, ask its median. Else, work it out locally.
-  def median(i):
-    return i.more.median() if i.more else i._medianPrim(i.all)
+  def median(self):
+    return self.more.median() if self.more else self._medianPrim(self.all)
 
   # Only recompute median if we do not know it already.
-  def _medianPrim(i,all):
-    if i._median == None:
-      i._median = median(all,ordered=False)
-    return i._median
+  def _medianPrim(self, all):
+    if self._median is None:
+      self._median = median(all,ordered=False)
+    return self._median

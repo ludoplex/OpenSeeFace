@@ -107,10 +107,9 @@ class RetinaFaceDetector():
         dets = dets[:self.top_k, 0:4]
         dets[:, 2:4] = dets[:, 2:4] - dets[:, 0:2]
 
-        if True:#is_background:
-            upsize = dets[:, 2:4] * np.array([[0.15, 0.2]])
-            dets[:, 0:2] -= upsize
-            dets[:, 2:4] += upsize * 2
+        upsize = dets[:, 2:4] * np.array([[0.15, 0.2]])
+        dets[:, 0:2] -= upsize
+        dets[:, 2:4] += upsize * 2
 
         return list(map(tuple, dets))
 
@@ -123,18 +122,17 @@ class RetinaFaceDetector():
         thread.start()
 
     def get_results(self):
-        if self.finished:
-            results = []
-            try:
-                while True:
-                    detection = self.results.get(False)
-                    results.append(detection)
-            except:
-                "No error"
-            self.finished = False
-            return list(*results)
-        else:
+        if not self.finished:
             return []
+        results = []
+        try:
+            while True:
+                detection = self.results.get(False)
+                results.append(detection)
+        except:
+            "No error"
+        self.finished = False
+        return list(*results)
 
 if __name__== "__main__":
     retina = RetinaFaceDetector(top_k=40, min_conf=0.2)
