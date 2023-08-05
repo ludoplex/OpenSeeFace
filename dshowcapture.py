@@ -8,8 +8,7 @@ import cv2
 import json
 
 def resolve(name):
-    f = os.path.join(os.path.dirname(__file__), name)
-    return f
+    return os.path.join(os.path.dirname(__file__), name)
 
 lib = None
 bm_lib = None
@@ -104,8 +103,7 @@ class DShowCapture():
 
     def get_device(self, device_number):
         self.lib.get_device(self.cap, device_number, self.name_buffer, 255)
-        name_str = str(self.name_buffer.value.decode('utf8', 'surrogateescape'))
-        return name_str
+        return str(self.name_buffer.value.decode('utf8', 'surrogateescape'))
 
     def get_info(self):
         global bm_enabled
@@ -232,9 +230,7 @@ class DShowCapture():
         return self.lib.get_colorspace_internal(self.cap)
 
     def capturing(self):
-        if self.type == "Blackmagic":
-            return 1
-        return self.lib.capturing(self.cap) == 1
+        return 1 if self.type == "Blackmagic" else self.lib.capturing(self.cap) == 1
 
     def get_frame(self, timeout):
         global bm_enabled
@@ -246,7 +242,7 @@ class DShowCapture():
             self.bm_lib.read_frame_bgra32_blocking(self.buffer, self.size)
         else:
             return None
-        img = np.frombuffer(self.buffer, dtype=np.uint8)[0:self.real_size]
+        img = np.frombuffer(self.buffer, dtype=np.uint8)[:self.real_size]
         if self.colorspace in [100, 101]:
             if self.real_size == self.height * self.width * 4:
                 img = cv2.cvtColor(img.reshape((self.height,self.width,4)), cv2.COLOR_BGRA2BGR)
@@ -302,19 +298,14 @@ class DShowCapture():
         return ret
 
 if __name__ == "__main__":
-    cam = 0
     width = 1280
     height = 720
-    fps = 30
-    if len(sys.argv) > 1:
-        cam = int(sys.argv[1])
+    cam = int(sys.argv[1]) if len(sys.argv) > 1 else 0
     if len(sys.argv) > 2:
         width = int(sys.argv[2])
     if len(sys.argv) > 3:
         height = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        fps = int(sys.argv[4])
-
+    fps = int(sys.argv[4]) if len(sys.argv) > 4 else 30
     cap = DShowCapture()
     devices = cap.get_devices()
     print("Devices: ", devices)
@@ -326,7 +317,7 @@ if __name__ == "__main__":
     height = cap.get_height()
     flipped = cap.get_flipped()
     print(f"Width: {width} Height: {height} FPS: {cap.get_fps()} Flipped: {flipped} Colorspace: {cap.get_colorspace()} Internal: {cap.get_colorspace_internal()}")
-    
+
     while True:
         img = cap.get_frame(1000)
         if img is not None:

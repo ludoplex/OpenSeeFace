@@ -12,16 +12,13 @@ from retinaface import RetinaFaceDetector
 from remedian import remedian
 
 def resolve(name):
-    f = os.path.join(os.path.dirname(__file__), name)
-    return f
+    return os.path.join(os.path.dirname(__file__), name)
 
 def clamp_to_im(pt, w, h):
     x = pt[0]
     y = pt[1]
-    if x < 0:
-        x = 0
-    if y < 0:
-        y = 0
+    x = max(x, 0)
+    y = max(y, 0)
     if x >= w:
         x = w-1
     if y >= h:
@@ -51,15 +48,14 @@ def rotate_image(image, a, center):
     (h, w) = image.shape[:2]
     a = np.rad2deg(a)
     M = cv2.getRotationMatrix2D((float(center[0]), float(center[1])), a, 1.0)
-    rotated = cv2.warpAffine(image, M, (w, h))
-    return rotated
+    return cv2.warpAffine(image, M, (w, h))
 
 def intersects(r1, r2, amount=0.3):
     area1 = r1[2] * r1[3]
     area2 = r2[2] * r2[3]
     inter = 0.0
     total = area1 + area2
-    
+
     r1_x1, r1_y1, w, h = r1
     r1_x2 = r1_x1 + w
     r1_y2 = r1_y1 + h
@@ -75,17 +71,12 @@ def intersects(r1, r2, amount=0.3):
         inter = (right - left) * (bottom - top)
         total -= inter
 
-    if inter / total >= amount:
-        return True
-
-    return False
+    return inter / total >= amount
 
     #return not (r1_x1 > r2_x2 or r1_x2 < r2_x1 or r1_y1 > r2_y2 or r1_y2 < r2_y1)
 
 def group_rects(rects):
-    rect_groups = {}
-    for rect in rects:
-        rect_groups[str(rect)] = [-1, -1, []]
+    rect_groups = {str(rect): [-1, -1, []] for rect in rects}
     group_id = 0
     for i, rect in enumerate(rects):
         name = str(rect)
@@ -125,15 +116,13 @@ def matrix_to_quaternion(m):
         else:
             t = 1 - m[0,0] + m[1,1] - m[2,2]
             q = [m[0,1]+m[1,0], t, m[1,2]+m[2,1], m[2,0]-m[0,2]]
+    elif m[0,0] < -m[1,1]:
+        t = 1 - m[0,0] - m[1,1] + m[2,2]
+        q = [m[2,0]+m[0,2], m[1,2]+m[2,1], t, m[0,1]-m[1,0]]
     else:
-        if m[0,0] < -m[1,1]:
-            t = 1 - m[0,0] - m[1,1] + m[2,2]
-            q = [m[2,0]+m[0,2], m[1,2]+m[2,1], t, m[0,1]-m[1,0]]
-        else:
-            t = 1 + m[0,0] + m[1,1] + m[2,2]
-            q = [m[1,2]-m[2,1], m[2,0]-m[0,2], m[0,1]-m[1,0], t]
-    q = np.array(q, np.float32) * 0.5 / np.sqrt(t)
-    return q
+        t = 1 + m[0,0] + m[1,1] + m[2,2]
+        q = [m[1,2]-m[2,1], m[2,0]-m[0,2], m[0,1]-m[1,0], t]
+    return np.array(q, np.float32) * 0.5 / np.sqrt(t)
 
 def worker_thread(session, frame, input, crop_info, queue, input_name, idx, tracker):
     output = session.run([], {input_name: input})[0]
@@ -250,13 +239,10 @@ class FeatureExtractor():
         if alpha <= -90:
             alpha = - (alpha + 180)
         alpha = np.deg2rad(alpha)
-        aligned_pts = []
-        for pt in pts:
-            aligned_pts.append(np.array(rotate(a, pt, alpha)))
+        aligned_pts = [np.array(rotate(a, pt, alpha)) for pt in pts]
         return alpha, np.array(aligned_pts)
 
     def update(self, pts, full=True):
-        features = {}
         now = time.perf_counter()
 
         norm_distance_x = np.mean([pts[0, 0] - pts[16, 0], pts[1, 0] - pts[15, 0]])
@@ -264,8 +250,7 @@ class FeatureExtractor():
 
         a1, f_pts = self.align_points(pts[42], pts[45], pts[[43, 44, 47, 46]])
         f = abs((np.mean([f_pts[0,1], f_pts[1,1]]) - np.mean([f_pts[2,1], f_pts[3,1]])) / norm_distance_y)
-        features["eye_l"] = self.eye_l.update(f, now)
-
+        features = {"eye_l": self.eye_l.update(f, now)}
         a2, f_pts = self.align_points(pts[36], pts[39], pts[[37, 38, 41, 40]])
         f = abs((np.mean([f_pts[0,1], f_pts[1,1]]) - np.mean([f_pts[2,1], f_pts[3,1]])) / norm_distance_y)
         features["eye_r"] = self.eye_r.update(f, now)
@@ -436,7 +421,7 @@ class FaceInfo():
                         break
 
                 if runs == 0:
-                    updated = copy.copy(self.face_3d[0:66])
+                    updated = copy.copy(self.face_3d[:66])
                     o_projected = np.ones((66,2))
                     o_projected[eligible] = np.squeeze(np.array(cv2.projectPoints(self.face_3d[eligible], self.rotation, self.translation, self.tracker.camera, self.tracker.dist_coeffs)[0]), 1)
                 c = updated * r
@@ -450,11 +435,11 @@ class FaceInfo():
                 if indices.shape[0] > 0:
                     if self.limit_3d_adjustment:
                         indices = np.intersect1d(indices, eligible)
-                    if indices.shape[0] > 0:
-                        self.update_counts[indices, update_type] += 1
-                        updated[indices] = c[indices]
-                        o_projected[indices] = c_projected[indices]
-                        changed = True
+                if indices.shape[0] > 0:
+                    self.update_counts[indices, update_type] += 1
+                    updated[indices] = c[indices]
+                    o_projected[indices] = c_projected[indices]
+                    changed = True
                 changed_any = changed_any or changed
 
                 if not changed:
@@ -475,14 +460,16 @@ class FaceInfo():
         self.pts_3d = self.normalize_pts3d(self.pts_3d)
         if self.tracker.feature_level == 2:
             self.current_features = self.features.update(self.pts_3d[:, 0:2])
-            self.eye_blink = []
-            self.eye_blink.append(1 - min(max(0, -self.current_features["eye_r"]), 1))
-            self.eye_blink.append(1 - min(max(0, -self.current_features["eye_l"]), 1))
+            self.eye_blink = [
+                1 - min(max(0, -self.current_features["eye_r"]), 1),
+                1 - min(max(0, -self.current_features["eye_l"]), 1),
+            ]
         elif self.tracker.feature_level == 1:
             self.current_features = self.features.update(self.pts_3d[:, 0:2], False)
-            self.eye_blink = []
-            self.eye_blink.append(1 - min(max(0, -self.current_features["eye_r"]), 1))
-            self.eye_blink.append(1 - min(max(0, -self.current_features["eye_l"]), 1))
+            self.eye_blink = [
+                1 - min(max(0, -self.current_features["eye_r"]), 1),
+                1 - min(max(0, -self.current_features["eye_l"]), 1),
+            ]
 
 def get_model_base_path(model_dir):
     model_base_path = resolve(os.path.join("models"))

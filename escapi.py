@@ -18,8 +18,7 @@ import numpy as np
 import cv2
 
 def resolve(name):
-    f = os.path.join(os.path.dirname(__file__), name)
-    return f
+    return os.path.join(os.path.dirname(__file__), name)
 
 
 class CAPTURE_PROPETIES:
@@ -59,10 +58,9 @@ def init():
     global lib
     if platform.architecture()[0] == '32bit':
         dll_path = resolve(os.path.join("escapi", "escapi_x86.dll"))
-        lib = cdll.LoadLibrary(dll_path)
     else:
         dll_path = resolve(os.path.join("escapi", "escapi_x64.dll"))
-        lib = cdll.LoadLibrary(dll_path)
+    lib = cdll.LoadLibrary(dll_path)
     if lib is None or lib.ESCAPIVersion() != 0xfff001:
         print("Invalid ESCAPI DLL found.")
         sys.exit(1)
@@ -81,8 +79,7 @@ def device_name(device):
     """
     namearry = (c_char * 256)()
     lib.getCaptureDeviceName(device, namearry, 256)
-    camearaname = namearry.value
-    return camearaname
+    return namearry.value
 
 def init_camera(device, width, height, fps):
     global devices

@@ -202,12 +202,7 @@ def _umeyama(src, dst, estimate_scale):
     else:
         T[:dim, :dim] = U @ np.diag(d) @ V
 
-    if estimate_scale:
-        # Eq. (41) and (42).
-        scale = 1.0 / src_demean.var(axis=0).sum() * (S @ d)
-    else:
-        scale = 1.0
-
+    scale = 1.0 / src_demean.var(axis=0).sum() * (S @ d) if estimate_scale else 1.0
     T[:dim, dim] = dst_mean - scale * (T[:dim, :dim] @ src_mean.T)
     T[:dim, :dim] *= scale
 
@@ -779,10 +774,7 @@ class ProjectiveTransform(GeometricTransform):
         if isinstance(other, ProjectiveTransform):
             # combination of the same types result in a transformation of this
             # type again, otherwise use general projective transformation
-            if type(self) == type(other):
-                tform = self.__class__
-            else:
-                tform = ProjectiveTransform
+            tform = self.__class__ if type(self) == type(other) else ProjectiveTransform
             return tform(other.params @ self.params)
         elif (hasattr(other, '__name__')
                 and other.__name__ == 'inverse'
@@ -795,22 +787,21 @@ class ProjectiveTransform(GeometricTransform):
     def __nice__(self):
         """common 'paramstr' used by __str__ and __repr__"""
         npstring = np.array2string(self.params, separator=', ')
-        paramstr = 'matrix=\n' + textwrap.indent(npstring, '    ')
-        return paramstr
+        return 'matrix=\n' + textwrap.indent(npstring, '    ')
 
     def __repr__(self):
         """Add standard repr formatting around a __nice__ string"""
         paramstr = self.__nice__()
         classname = self.__class__.__name__
         classstr = classname
-        return '<{}({}) at {}>'.format(classstr, paramstr, hex(id(self)))
+        return f'<{classstr}({paramstr}) at {hex(id(self))}>'
 
     def __str__(self):
         """Add standard str formatting around a __nice__ string"""
         paramstr = self.__nice__()
         classname = self.__class__.__name__
         classstr = classname
-        return '<{}({})>'.format(classstr, paramstr)
+        return f'<{classstr}({paramstr})>'
 
 
 class AffineTransform(ProjectiveTransform):

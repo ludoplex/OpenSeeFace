@@ -62,12 +62,12 @@ class OpenSeeFaceGaze(geffnet.mobilenetv3.MobileNetV3):
         r3 = None
         for i, feature in enumerate(self.blocks):
             x = feature(x)
-            if i == 3:
-                r3 = x
-            if i == 1:
-                r2 = x
             if i == 0:
                 r1 = x
+            elif i == 1:
+                r2 = x
+            elif i == 3:
+                r3 = x
         x = self.up1(x, r3)
         x = self.up2(x, r2)
         x = self.up3(x, r1)
@@ -198,10 +198,10 @@ class OpenSeeFaceLandmarks30Pt(geffnet.mobilenetv3.MobileNetV3):
         r3 = None
         for i, feature in enumerate(self.blocks):
             x = feature(x)
-            if i == 4:
-                r3 = x
             if i == 2:
                 r2 = x
+            elif i == 4:
+                r3 = x
         x = self.up1(x, r3)
         x = self.up2(x, r2)
         x = self.group(x)
